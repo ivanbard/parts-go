@@ -2,8 +2,14 @@ package main
 
 import (
 	"fmt"
+	"html"
+	"io"
+	"net/http"
+	"regexp"
 	"strings"
 )
+
+// i will put vehicle info in a Vehicle struct later down the line
 
 func buildURL(year int, make, model string) string {
 	base_url := "https://www.rockauto.com/en/catalog/"
@@ -14,6 +20,33 @@ func buildURL(year int, make, model string) string {
 	// merge together with inputs + commas as per rockauto formatting
 	new_url := fmt.Sprintf("%s%s,%d,%s", base_url, make, year, model)
 	return new_url
+}
+
+func extractEngines(pageContent string) []string {
+	decoded := html.UnescapeString(pageContent)
+
+	// find all engine tags
+	re := regexp.MustCompile(`"engine"\s*:\s*"([^"]+)"`)
+	matches := re.FindAllStringSubmatch(decoded, -1)
+
+	// use map to not have duplicates
+	seen := make(map[string]bool)
+	var engines []string
+
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+
+		engine := match[1]
+
+		if !seen[engine] {
+			seen[engine] = true
+			engines = append(engines, engine)
+		}
+	}
+
+	return engines
 }
 
 func main() {
@@ -29,7 +62,40 @@ func main() {
 	fmt.Printf("and the model?\n")
 	fmt.Scan(&model)
 
+	// build URL with input info
 	u := buildURL(year, make, model)
 	fmt.Printf("looking for parts for a %d %s %s\n", year, make, model)
-	fmt.Printf("%s", u)
+	fmt.Printf("%s\n", u)
+
+	// send request to RA for vehicle
+	resp, err := http.Get(u)
+	if err != nil {
+		fmt.Printf("error fetching page: %v\n", err)
+		return
+	}
+
+	defer resp.Body.Close() // close body when GET function is done
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("error with status code: %d\n", resp.StatusCode)
+		return
+	}
+
+	//
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("error reading body: %v\n", err)
+		return
+	}
+	bodyString := string(bodyBytes)
+
+	// raw scrape text dump
+	fmt.Printf("%s\n", bodyString)
+
+	// print dump of found engines in content scrape from car model
+	engines := extractEngines(bodyString)
+	for i, engine := range engines {
+		fmt.Printf("%d. %s\n", i+1, engine)
+	}
+
 }
