@@ -1,33 +1,35 @@
-package main 
+package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
-	"net/http"
-	"log"
-	"io"
 )
 
+func buildURL(year int, make, model string) string {
+	base_url := "https://www.rockauto.com/en/catalog/"
+	// make sure inputs are uniform
+	make = strings.ToLower(strings.TrimSpace(make))
+	model = strings.ToLower(strings.TrimSpace(model))
+
+	// merge together with inputs + commas as per rockauto formatting
+	new_url := fmt.Sprintf("%s%s,%d,%s", base_url, make, year, model)
+	return new_url
+}
+
 func main() {
-	argsWithoutProg := os.Args[1:]
-	fmt.Println(argsWithoutProg)
+	var make, model string
+	var year int
 
-	partResult := strings.Join(argsWithoutProg, " ")
-	fmt.Println(partResult)
+	// very very basic car specifics prompting
+	fmt.Printf("yo you launched parts-go\n")
+	fmt.Printf("put in your cars year yea?\n")
+	fmt.Scan(&year)
+	fmt.Printf("now the make?\n")
+	fmt.Scan(&make)
+	fmt.Printf("and the model?\n")
+	fmt.Scan(&model)
 
-	// get request on rockauto
-	resp, err := http.Get("https://www.rockauto.com/")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	// read GET request
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	
-	sb := string(body)
-	log.Printf(sb)
+	u := buildURL(year, make, model)
+	fmt.Printf("looking for parts for a %d %s %s\n", year, make, model)
+	fmt.Printf("%s", u)
 }
