@@ -5,11 +5,22 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 )
 
 // i will put vehicle info in a Vehicle struct later down the line
+type Vehicle struct {
+	Make  string
+	Year  int
+	Model string
+}
+
+type EngineOption struct {
+	Name string // engine option
+	Path string // href tail with engine option + carcode
+}
 
 func buildURL(year int, make, model string) string {
 	base_url := "https://www.rockauto.com/en/catalog/"
@@ -49,9 +60,55 @@ func extractEngines(pageContent string) []string {
 	return engines
 }
 
+// TO-DO ONCE STRATEGY IS FIGURED OUT
+// should i parse the html content for the href right in this function?
+func buildEngineOptions(enginesList []string, currURL string, bodyString string) []EngineOption {
+	var options []EngineOption
+
+	// Parse full URL so we can get only:
+	// /en/catalog/toyota,2003,camry
+	parsedURL, err := url.Parse(currURL)
+	if err != nil {
+		fmt.Println("Error parsing current URL:", err)
+		return options
+	}
+
+	basePath := parsedURL.Path
+
+	for _, engine := range enginesList {
+		// keep original engine name untouched
+		engineSlug := strings.ToLower(engine)
+		engineSlug = strings.ReplaceAll(engineSlug, " ", "+")
+
+		// what we expect the href to START with
+		searchPrefix := fmt.Sprintf(
+			`href="%s,%s,`,
+			basePath,
+			engineSlug,
+		)
+
+		// find searchPrefix inside bodyString
+		hrefStart := strings.Index(bodyString, searchPrefix)
+
+		pathStart := hrefStart + len(`href="`)
+		// extract everything until the next "
+		extractedString := bodyString[pathStart : pathStart+strings.Index(bodyString[pathStart:], `"`)]
+
+		// store it in struct
+		options = append(options, EngineOption{
+			Name: engine,
+			Path: extractedString,
+		})
+
+		fmt.Println(searchPrefix) // temporary debugging
+	}
+
+	return options
+}
+
 func main() {
 	var make, model string
-	var year int
+	var year, engineChoice int
 
 	// very very basic car specifics prompting
 	fmt.Printf("yo you launched parts-go\n")
@@ -97,5 +154,13 @@ func main() {
 	for i, engine := range engines {
 		fmt.Printf("%d. %s\n", i+1, engine)
 	}
+
+	// find hrefs for available engine options
+
+	fmt.Printf("punch in the number of engine choice\n")
+	fmt.Scan(&engineChoice)
+
+	choices := buildEngineOptions(engines, u, bodyString)
+	fmt.Printf("%s %s\n", choices[engineChoice-1].Name, choices[engineChoice-1].Path)
 
 }
