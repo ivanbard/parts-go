@@ -106,6 +106,12 @@ func buildEngineOptions(enginesList []string, currURL string, bodyString string)
 	return options
 }
 
+func buildFullURL(tag string) string {
+	base_url := "https://www.rockauto.com"
+	new_url := fmt.Sprintf("%s%s", base_url, tag)
+	return new_url
+}
+
 func main() {
 	var make, model string
 	var year, engineChoice int
@@ -163,4 +169,31 @@ func main() {
 	choices := buildEngineOptions(engines, u, bodyString)
 	fmt.Printf("%s %s\n", choices[engineChoice-1].Name, choices[engineChoice-1].Path)
 
+	fullURL := buildFullURL(choices[engineChoice-1].Path)
+	fmt.Printf("%s\n", fullURL)
+
+	//now just need to re-request http scrape to new URL
+	resp, err = http.Get(fullURL)
+	if err != nil {
+		fmt.Printf("error fetching page: %v\n", err)
+		return
+	}
+
+	defer resp.Body.Close() // close body when GET function is done
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("error with status code: %d\n", resp.StatusCode)
+		return
+	}
+
+	//
+	bodyBytes, err = io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("error reading body: %v\n", err)
+		return
+	}
+	bodyString = string(bodyBytes)
+
+	// raw scrape text dump
+	fmt.Printf("%s\n", bodyString)
 }
