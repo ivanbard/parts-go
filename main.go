@@ -15,11 +15,18 @@ type Vehicle struct {
 	Make  string
 	Year  int
 	Model string
+	// Move the EngineOption structs to be a part of the vehicle
 }
 
 type EngineOption struct {
 	Name string // engine option
 	Path string // href tail with engine option + carcode
+}
+
+type CatalogNode struct {
+	Name string
+	Path string
+	// may add child catalognode later for sub-categories
 }
 
 func buildURL(year int, make, model string) string {
@@ -58,6 +65,33 @@ func extractEngines(pageContent string) []string {
 	}
 
 	return engines
+}
+
+func extractCatalogNodes(bodyString string) []CatalogNode {
+	var nodes []CatalogNode
+	cursor := 0
+	target := `class="navlabellink`
+
+	for {
+		idx := strings.Index(bodyString[cursor:], target)
+		if idx == -1 {
+			break //all navlabellinks explored
+		}
+
+		// idx is relative to bodystring[cursor:]
+		// it will only provide idx from prev cursor location
+		absIdx := cursor + idx
+
+		startIdx := strings.Index(bodyString[absIdx:], `href="`)
+		startIdx = startIdx + len(`href="`)
+		endIdx := startIdx + strings.Index(bodyString[startIdx:], `"`)
+		extractedString := bodyString[startIdx:endIdx]
+		// TODO: find the visible text within href tag
+
+		// advance cursor to not hit previous class tag
+		cursor = cursor + absIdx
+	}
+
 }
 
 // TO-DO ONCE STRATEGY IS FIGURED OUT
